@@ -1,0 +1,24 @@
+[project]
+name = "shiranui"
+version = "0.1.0"
+description = "CDISC Library Retriever: A tool to retrieve the metadata from CDISC Library."
+readme = "README.md"
+authors = [
+    { name = "Ippei Akiya", email = "ippei.akiya@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "fastmcp>=2.8.0",
+    "html2text>=2024.2.26",
+    "mcp[cli]>=1.2.0",
+    "pandas>=2.3.0",
+    "requests>=2.32.3",
+]
+
+[project.scripts]
+shiranui = "shiranui:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
