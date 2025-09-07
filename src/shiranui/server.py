@@ -106,18 +106,18 @@ def get_bc_package_list(headers_ = None) -> dict:
 
 
 @mcp.tool(name="get_bc_for_package")
-def get_bc_for_package(package_id: str, biomedicalconcept_id: str, headers_ = None) -> dict:
+def get_bc_for_package(package: str, biomedicalconcept_id: str, headers_ = None) -> dict:
     """
     Get a specific Biomedical Concept from a specific package
 
     Args:
-        package_id (str): The ID of the package to retrieve biomedical concepts from.
+        package (str): The ID of the package to retrieve biomedical concepts from.
         biomedicalconcept_id (str): The ID of the Biomedical Concept to retrieve.
 
     Usage:
-        get_bc_for_package("PACKAGE_ID", "BIOM EDICALCONCEPT_ID")
+        get_bc_for_package("PACKAGE", "BIOM EDICALCONCEPT_ID")
     """
-    url = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/packages/{package_id}/biomedicalconcepts/{biomedicalconcept_id}"
+    url = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/packages/{package}/biomedicalconcepts/{biomedicalconcept_id}"
     if headers_ is None:
         response = api(url)
     else:
@@ -127,17 +127,17 @@ def get_bc_for_package(package_id: str, biomedicalconcept_id: str, headers_ = No
 
 
 @mcp.tool(name="get_bc_list_for_package")
-def get_bc_list_for_package(package_id: str, headers_ = None) -> dict:
+def get_bc_list_for_package(package: str, headers_ = None) -> dict:
     """
     Get Biomedical Concept list for a specific Package
 
     Args:
-        package_id (str): The ID of the Package to retrieve biomedical concept list from.
+        package(str): The ID of the Package to retrieve biomedical concept list from.
 
     Usage:
-        get_bc_package("PACKAGE_ID")
+        get_bc_package("PACKAGE")
     """
-    url=f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/packages/{package_id}/biomedicalconcepts"
+    url=f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/packages/{package}/biomedicalconcepts"
     if headers_ is None:
         response = api(url)
     else:
@@ -219,5 +219,63 @@ def get_sdtm_dataset_specialization_domain_list(headers_ = None) -> dict:
         response = api(url)
     else:
         response = api(url, headers_ = headers)
+
+    return response.json()
+
+
+@mcp.tool()
+def get_sdtm_dataset_specialization_for_package(package: str, datasetspecialization: str, headers_ = None) -> dict:
+    """
+    Get SDTM Dataset Specialization for a specific package and dataset specialization
+
+    Args:
+        package (str): The ID of the package to retrieve dataset specializations from.
+        datasetspecialization (str): The ID of the dataset specialization to retrieve.
+
+    Usage:
+        get_sdtm_dataset_specialization_for_package("PACKAGE", "DATASET_SPECIFICATION")
+    """
+    url = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/packages/{package}/datasetspecializations/{datasetspecialization}"
+    if headers_ is None:
+        response = api(url)
+    else:
+        response = api(url, headers_ = headers)
+
+    return response.json()
+
+
+@mcp.tool()
+def get_sdtm_dataset_specialization_package_list(headers_ = None) -> dict:
+    """
+    Get SDTM Dataset Specialization Package List from CDISC Library
+
+    Usage:
+        get_sdtm_dataset_specialization_package_list()
+    """
+    url="https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/packages"
+    if headers_ is None:
+        response = api(url)
+    else:
+        response = api(url, headers_ = headers)
+
+    return response.json()
+
+
+@mcp.tool(name="get_sdtm_dataset_specialization_list_for_package")
+def get_sdtm_dataset_specialization_list_for_package(package: str, headers_ = None) -> dict:
+    """
+    Get SDTM Dataset Specializations List for a specific Package
+
+    Args:
+        package(str): The ID of the package to retrieve dataset specializations list from.
+
+    Usage:
+        get_sdtm_dataset_specialization_list_for_package("PACKAGE")
+    """
+    url = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/packages/{package}/datasetspecializations"
+    if headers_ is None:
+        response = api(url)
+    else:
+        response = api(url, headers_=headers_)
 
     return response.json()
