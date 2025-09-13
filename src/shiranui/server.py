@@ -1,9 +1,6 @@
 import os
 import requests
 from mcp.server.fastmcp import FastMCP
-# from mcp.shared.exceptions import McpError
-# from shiranui.api_client.biomedical_concepts import BiomedicalConcepts
-# from shiranui.exceptions.api_key_error import ApiKeyError
 
 mcp = FastMCP("CDISC Library Retriever")
 
@@ -36,7 +33,7 @@ def api(endpoint_url: str, headers_ = None)-> requests.Response:
 
 # MCP for Biomedical Concepts V2
 @mcp.tool(name="get_latest_bc_list")
-async def get_latest_bc_list(headers_ = None) -> list:
+async def get_latest_bc_list(headers_ = None) -> dict:
     """
     Get Latest Biomedical Concept List from CDISC Library
 
@@ -49,7 +46,7 @@ async def get_latest_bc_list(headers_ = None) -> list:
     else:
         response = api(url, headers_=headers_)
 
-    return [response.json().get("_links").get("biomedicalConcepts")]
+    return response.json()
 
 @mcp.tool(name="get_latest_bc_cat")
 def get_latest_bc_cat(headers_ = None) -> dict:
