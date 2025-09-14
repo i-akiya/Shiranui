@@ -161,11 +161,11 @@ def get_latest_bc_dataset_specializations(biomedicalconcept: str, headers_ = Non
     else:
         response = api(url, headers_=headers_)
 
-    return response.json().get("_links").get("datasetSpecializations")
+    return response.json()
 
 
-@mcp.tool(name="get_latest_sdtm_dataset_specializations")
-def get_latest_sdtm_dataset_specializations(domain: str, headers_ = None) -> dict:
+@mcp.tool(name="get_latest_sdtm_dataset_specializations_list")
+def get_latest_sdtm_dataset_specializations_list(domain: str, headers_ = None) -> dict:
     """
     Get Latest SDTM Dataset Specializations List for a specific domain
 
@@ -176,11 +176,12 @@ def get_latest_sdtm_dataset_specializations(domain: str, headers_ = None) -> dic
         get_latest_sdtm_dataset_specializations("DM")
     """
     url = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations?domain={domain}"
-    if headers_ is None:
-        response = api(url)
-    else:
-        response = api(url, headers_ = headers)
 
+    print(headers_)
+    if headers_ is None:
+        response = api(endpoint_url=url)
+    else:
+        response = api(endpoint_url=url, headers_ = headers)
     return response.json()
 
 

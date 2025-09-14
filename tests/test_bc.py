@@ -198,31 +198,3 @@ async def test_get_bc_list_for_package(mcp_client):
                 break
 
         assert href_ == "/mdr/bc/packages/2025-07-01/biomedicalconcepts/C100219"
-
-# @pytest.mark.asyncio
-# async def test_get_sdtm_dataset_specializations(mcp_client):
-#     client = mcp_client.get("client")
-#     headers = mcp_client.get("headers")
-
-#     # Execute operations
-#     async with client:
-#         domain = "DM"
-#         response = await client.call_tool(
-#             "get_latest_sdtm_dataset_specializations",
-#             arguments={"domain": domain, "headers_": headers}
-#         )
-#         result = response[0]
-#         result_dict = json.loads(result.text)
-#         specializations = result_dict.get("_links").get("specializations")
-
-#         assert isinstance(result, TextContent)
-#         assert len(specializations) > 1
-#         assert any(item.get("domain") == domain for item in specializations) == True
-
-#         href_ = None
-#         for item in specializations:
-#             if item.get("name") == "US DM Specialization":
-#                 href_ = item.get("href")
-#                 break
-
-#         assert href_ is not None
