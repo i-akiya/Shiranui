@@ -6,6 +6,11 @@ dist/
 wheels/
 *.egg-info
 .idea
+.pytest_cache
+.ruff_cache
 # Virtual environments
 .venv
+
 /sandbox/
+.DS_Store
+.coverage
