@@ -2,8 +2,8 @@
 Shiranui is [the Model Context Protocol](https://modelcontextprotocol.io/introduction)(MCP) Server for retreiving the clical standard contents in [the CDISC Library](https://library.cdisc.org/browser/#/).  
 This MCP server is built with [Python FastMCP](https://github.com/jlowin/fastmcp).
 
-https://github.com/user-attachments/assets/e537bc15-1fcb-427a-8ecb-ee7c66885e08
-  
+https://github.com/user-attachments/assets/9cd7e1a6-2750-4910-bb03-763c323b9f22
+
 ## Support CDISC Library API
 - v2 Biomedical Concept Endpoints
 - v2 Dataset Specialization Endpoints
