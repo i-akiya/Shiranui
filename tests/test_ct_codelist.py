@@ -1,72 +1,174 @@
 import pytest
-import sys
 import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.shiranui.server import (
-    get_latest_ct_version,
-    get_ct_latest_version_tool,
-    get_cdisc_codelist,
-    get_ct_package_codelists
-)
+import json
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+from mcp.types import TextContent
 
 
-def test_get_latest_ct_version_sdtm():
-    """Test fetching latest SDTM CT version"""
-    version = get_latest_ct_version("SDTM")
-    assert version is not None
-    assert len(version) == 10
-    assert version.count("-") == 2
-
-
-def test_get_latest_ct_version_adam():
-    """Test fetching latest ADAM CT version"""
-    version = get_latest_ct_version("ADAM")
-    assert version is not None
-    assert len(version) == 10
-
-
-def test_get_ct_latest_version_tool():
-    """Test the MCP tool for latest version"""
-    result = get_ct_latest_version_tool.fn("SDTM")
-    assert "latest_version" in result
-    assert result["standard"] == "SDTM"
-
-
-def test_get_cdisc_codelist_ageu():
-    """Test fetching AGEU (Age Units) codelist"""
-    result = get_cdisc_codelist.fn(
-        codelist_value="AGEU",
-        standard="SDTM"
+@pytest.fixture
+def mcp_client():
+    transport = StdioTransport(
+        command="python",
+        args=[".venv/bin/shiranui"],
+        keep_alive=False
     )
-    assert "codelist_info" in result
-    assert result["codelist_info"]["id"] == "AGEU"
-    assert len(result["terms"]) > 0
+    client = Client(transport)
+
+    headers = {
+        "api-key": os.getenv('CDISC_LIBRARY_API_KEY'),
+        "accept": "application/json"
+    }
+
+    return {"client": client, "headers": headers}
 
 
-def test_get_cdisc_codelist_adam_dtype():
-    """Test fetching DTYPE from ADAM"""
-    result = get_cdisc_codelist.fn(
-        codelist_value="DTYPE",
-        standard="ADAM"
-    )
-    assert "codelist_info" in result
-    assert result["codelist_info"]["standard"] == "ADAM"
+@pytest.mark.asyncio
+async def test_get_ct_latest_version(mcp_client):
+    """Test retrieving the latest CT version for a standard"""
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_ct_latest_version",
+            arguments={"standard": "sdtm", "headers_": headers}
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "latest_version" in result_dict
+        assert "display_version" in result_dict
+        assert "all_versions" in result_dict
+        assert isinstance(result_dict["all_versions"], list)
+        assert len(result_dict["all_versions"]) > 0
 
 
-def test_get_cdisc_codelist_invalid():
+@pytest.mark.asyncio
+async def test_get_cdisc_codelist_by_id(mcp_client):
+    """Test retrieving a codelist by ID (AGEU - Age Units)"""
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_cdisc_codelist",
+            arguments={
+                "standard": "sdtm",
+                "codelist_value": "AGEU",
+                "codelist_type": "ID",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "codelist_info" in result_dict
+        assert result_dict["codelist_info"]["id"] == "AGEU"
+        assert "terms" in result_dict
+        assert len(result_dict["terms"]) > 0
+        
+        # Check for expected terms
+        term_codes = [term["term"] for term in result_dict["terms"]]
+        assert "YEARS" in term_codes
+        assert "MONTHS" in term_codes
+
+
+@pytest.mark.asyncio
+async def test_get_cdisc_codelist_adam(mcp_client):
+    """Test retrieving an ADaM codelist (DTYPE)"""
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_cdisc_codelist",
+            arguments={
+                "standard": "adam",
+                "codelist_value": "DTYPE",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "codelist_info" in result_dict
+        assert result_dict["codelist_info"]["standard"] == "ADAM"
+
+
+@pytest.mark.asyncio
+async def test_get_cdisc_codelist_invalid(mcp_client):
     """Test handling of invalid codelist"""
-    result = get_cdisc_codelist.fn(
-        codelist_value="INVALID_CODE",
-        standard="SDTM"
-    )
-    assert "warning" in result or "error" in result
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_cdisc_codelist",
+            arguments={
+                "standard": "sdtm",
+                "codelist_value": "INVALID_CODE",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "warning" in result_dict or "error" in result_dict
 
 
-def test_get_ct_package_codelists():
-    """Test listing all codelists in a package"""
-    result = get_ct_package_codelists.fn("SDTM")
-    assert "codelists" in result
-    assert result["codelist_count"] > 0
-    assert len(result["codelists"]) > 0
+@pytest.mark.asyncio
+async def test_get_ct_package_codelists(mcp_client):
+    """Test retrieving all codelists for a CT package"""
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_ct_package_codelists",
+            arguments={
+                "standard": "sdtm",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "standard" in result_dict
+        assert result_dict["standard"] == "SDTM"
+        assert "version" in result_dict
+        assert "codelist_count" in result_dict
+        assert "codelists" in result_dict
+        assert len(result_dict["codelists"]) > 50
+        
+        # Check that AGEU exists in the list
+        codelist_ids = [cl["id"] for cl in result_dict["codelists"]]
+        assert "AGEU" in codelist_ids
+
+
+@pytest.mark.asyncio
+async def test_get_ct_package_codelists_adam(mcp_client):
+    """Test retrieving ADaM codelists"""
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_ct_package_codelists",
+            arguments={
+                "standard": "adam",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert result_dict["standard"] == "ADAM"
+        assert "codelists" in result_dict
+        assert len(result_dict["codelists"]) > 0

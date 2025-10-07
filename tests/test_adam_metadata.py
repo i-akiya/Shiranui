@@ -1,86 +1,169 @@
 import pytest
-import sys
 import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.shiranui.server import (
-    find_adam_variable_dataset,
-    get_adam_variable_details,
-    get_adam_dataset_structure
-)
+import json
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+from mcp.types import TextContent
 
 
-def test_find_adam_variable_dataset():
-    """Test finding which dataset contains a variable"""
-    dataset = find_adam_variable_dataset("TRT01P", "1-3")
-    assert dataset is not None
-    assert dataset == "ADSL"
+@pytest.fixture
+def mcp_client():
+    transport = StdioTransport(
+        command="python",
+        args=[".venv/bin/shiranui"],
+        keep_alive=False
+    )
+    client = Client(transport)
+
+    headers = {
+        "api-key": os.getenv('CDISC_LIBRARY_API_KEY'),
+        "accept": "application/json"
+    }
+
+    return {"client": client, "headers": headers}
 
 
-def test_get_adam_variable_details_trt01p():
+@pytest.mark.asyncio
+async def test_get_adam_variable_details_trt01p(mcp_client):
     """Test fetching TRT01P variable details from ADSL"""
-    result = get_adam_variable_details.fn(
-        adam_variable="TRT01P",
-        adamig_version="1-3"
-    )
-    assert "variable" in result
-    assert result["variable"] == "TRT01P"
-    assert result["dataset"] == "ADSL"
-    assert "label" in result
-    assert "datatype" in result
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_variable_details",
+            arguments={
+                "adam_variable": "TRT01P",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "variable" in result_dict
+        assert result_dict["variable"] == "TRT01P"
+        assert result_dict["dataset"] == "ADSL"
+        assert "label" in result_dict
+        assert "datatype" in result_dict
 
 
-def test_get_adam_variable_details_paramcd():
+@pytest.mark.asyncio
+async def test_get_adam_variable_details_paramcd(mcp_client):
     """Test fetching PARAMCD variable details"""
-    result = get_adam_variable_details.fn(
-        adam_variable="PARAMCD",
-        adamig_version="1-3"
-    )
-    assert "variable" in result
-    assert result["variable"] == "PARAMCD"
-    assert "label" in result
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_variable_details",
+            arguments={
+                "adam_variable": "PARAMCD",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "variable" in result_dict
+        assert result_dict["variable"] == "PARAMCD"
+        assert "label" in result_dict
 
 
-def test_get_adam_variable_invalid():
+@pytest.mark.asyncio
+async def test_get_adam_variable_invalid(mcp_client):
     """Test handling of invalid variable"""
-    result = get_adam_variable_details.fn(
-        adam_variable="INVALID_VAR_XYZ",
-        adamig_version="1-3"
-    )
-    assert "error" in result
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_variable_details",
+            arguments={
+                "adam_variable": "INVALID_VAR_XYZ",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "error" in result_dict
 
 
-def test_get_adam_dataset_structure_adsl():
+@pytest.mark.asyncio
+async def test_get_adam_dataset_structure_adsl(mcp_client):
     """Test fetching ADSL dataset structure"""
-    result = get_adam_dataset_structure.fn(
-        dataset="ADSL",
-        adamig_version="1-3"
-    )
-    assert "dataset" in result
-    assert result["dataset"] == "ADSL"
-    assert "variables" in result
-    assert result["variable_count"] > 0
-    assert len(result["variables"]) > 0
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_dataset_structure",
+            arguments={
+                "dataset": "ADSL",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "dataset" in result_dict
+        assert result_dict["dataset"] == "ADSL"
+        assert "variables" in result_dict
+        assert result_dict["variable_count"] > 0
+        assert len(result_dict["variables"]) > 0
 
 
-def test_get_adam_dataset_structure_occds():
+@pytest.mark.asyncio
+async def test_get_adam_dataset_structure_occds(mcp_client):
     """Test fetching OCCDS dataset structure"""
-    result = get_adam_dataset_structure.fn(
-        dataset="OCCDS",
-        adamig_version="1-3"
-    )
-    assert "dataset" in result or "error" in result
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_dataset_structure",
+            arguments={
+                "dataset": "OCCDS",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "dataset" in result_dict or "error" in result_dict
 
 
-def test_get_adam_variable_with_codelist():
+@pytest.mark.asyncio
+async def test_get_adam_variable_with_codelist(mcp_client):
     """Test variable that has associated codelists"""
-    result = get_adam_variable_details.fn(
-        adam_variable="TRT01P",
-        adamig_version="1-3"
-    )
-    assert "variable" in result
-    if "codelists" in result and len(result["codelists"]) > 0:
-        codelist = result["codelists"][0]
-        assert "codelist_info" in codelist
-        assert "terms" in codelist
+    client = mcp_client.get("client")
+    headers = mcp_client.get("headers")
+
+    async with client:
+        response = await client.call_tool(
+            "get_adam_variable_details",
+            arguments={
+                "adam_variable": "TRT01P",
+                "adamig_version": "1-3",
+                "headers_": headers
+            }
+        )
+        result = response[0]
+        result_dict = json.loads(result.text)
+
+        assert isinstance(result, TextContent)
+        assert "variable" in result_dict
+        if "codelists" in result_dict and len(result_dict["codelists"]) > 0:
+            codelist = result_dict["codelists"][0]
+            assert "codelist_info" in codelist
+            assert "terms" in codelist
