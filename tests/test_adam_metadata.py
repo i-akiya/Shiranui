@@ -42,8 +42,10 @@ async def test_get_adam_variable_details_trt01p(mcp_client):
         result_dict = json.loads(result.text)
 
         assert isinstance(result, TextContent)
+        assert "error" not in result_dict, f"Error occurred: {result_dict.get('error')}"
         assert "variable" in result_dict
         assert result_dict["variable"] == "TRT01P"
+        assert "dataset" in result_dict
         assert result_dict["dataset"] == "ADSL"
         assert "label" in result_dict
         assert "datatype" in result_dict
@@ -68,6 +70,7 @@ async def test_get_adam_variable_details_paramcd(mcp_client):
         result_dict = json.loads(result.text)
 
         assert isinstance(result, TextContent)
+        assert "error" not in result_dict, f"Error occurred: {result_dict.get('error')}"
         assert "variable" in result_dict
         assert result_dict["variable"] == "PARAMCD"
         assert "label" in result_dict
@@ -114,6 +117,7 @@ async def test_get_adam_dataset_structure_adsl(mcp_client):
         result_dict = json.loads(result.text)
 
         assert isinstance(result, TextContent)
+        assert "error" not in result_dict, f"Error occurred: {result_dict.get('error')}"
         assert "dataset" in result_dict
         assert result_dict["dataset"] == "ADSL"
         assert "variables" in result_dict

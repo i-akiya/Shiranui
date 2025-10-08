@@ -285,23 +285,26 @@ VALID_STANDARDS = [
     "DDF", "GLOSSARY", "MRCT", "PROTOCOL", "QRS", "QS-FT", "TMF"
 ]
 
-def get_latest_ct_version(standard: str) -> str:
+def get_latest_ct_version(standard: str, headers_ = None, return_all: bool = False):
     """
     Fetch the latest Controlled Terminology version for a given standard
     
     Args:
         standard: The CDISC standard (e.g., SDTM, ADAM, CDASH)
+        headers_: Optional custom headers
+        return_all: If True, returns tuple of (latest, all_versions), otherwise just latest
     
     Returns:
-        The latest version date in YYYY-MM-DD format
+        If return_all=False: The latest version date in YYYY-MM-DD format
+        If return_all=True: Tuple of (latest_version, all_versions_list)
     """
     standard_upper = standard.upper()
     
     if standard_upper not in VALID_STANDARDS:
         raise ValueError(f"Invalid standard '{standard}'. Supported values are: {', '.join(VALID_STANDARDS)}")
     
-    url = "https://api.library.cdisc.org/api/mdr/products/Terminology"
-    response = api(url)
+    url = "https://api.library.cdisc.org/api/mdr/ct/packages"
+    response = api(url, headers_=headers_)
     data = response.json()
     
     versions = []
@@ -331,6 +334,8 @@ def get_latest_ct_version(standard: str) -> str:
         )
     
     versions.sort(reverse=True)
+    if return_all:
+        return versions[0], versions
     return versions[0]
 
 
@@ -347,14 +352,16 @@ def get_ct_latest_version_tool(standard: str = "SDTM", headers_ = None) -> dict:
         get_ct_latest_version_tool("ADAM")
     
     Returns:
-        Dictionary with standard and version information
+        Dictionary with standard, latest version, display version, and all available versions
     """
     try:
-        version = get_latest_ct_version(standard)
+        latest_version, all_versions = get_latest_ct_version(standard, headers_=headers_, return_all=True)
         return {
             "standard": standard.upper(),
-            "latest_version": version,
-            "message": f"Latest {standard.upper()} CT version is {version}"
+            "latest_version": latest_version,
+            "display_version": latest_version,
+            "all_versions": all_versions,
+            "message": f"Latest {standard.upper()} CT version is {latest_version}"
         }
     except Exception as e:
         return {
@@ -409,7 +416,7 @@ def get_cdisc_codelist(
             }
         
         if not version:
-            version = get_latest_ct_version(standard)
+            version = get_latest_ct_version(standard, headers_=headers_)
         
         api_standard = f"{standard.lower()}ct"
         url = f"https://api.library.cdisc.org/api/mdr/ct/packages/{api_standard}-{version}"
@@ -509,7 +516,7 @@ def get_ct_package_codelists(
             }
         
         if not version:
-            version = get_latest_ct_version(standard)
+            version = get_latest_ct_version(standard, headers_=headers_)
         
         api_standard = f"{standard.lower()}ct"
         url = f"https://api.library.cdisc.org/api/mdr/ct/packages/{api_standard}-{version}"
@@ -556,27 +563,48 @@ def find_adam_variable_dataset(adam_variable: str, adamig_version: str, headers_
         Dataset name (e.g., ADSL, OCCDS) or None if not found
     """
     adamig_version_hyphen = adamig_version.replace(".", "-")
-    url = f"https://api.library.cdisc.org/api/mdr/adam/adamig-{adamig_version_hyphen}"
     
+    # First, get the list of datastructures
+    url = f"https://api.library.cdisc.org/api/mdr/adam/adamig-{adamig_version_hyphen}/datastructures"
     response = api(url, headers_=headers_)
     data = response.json()
     
-    if not data or "dataStructures" not in data:
+    if not data or "_links" not in data or "dataStructures" not in data["_links"]:
         return None
     
-    for ds in data.get("dataStructures", []):
-        ds_name = ds.get("name")
+    # Iterate through each datastructure and query its variables
+    for ds_link in data["_links"]["dataStructures"]:
+        href = ds_link.get("href", "")
+        if not href:
+            continue
+        
+        # Extract dataset name from href (e.g., "/mdr/adam/adamig-1-3/datastructures/ADSL" -> "ADSL")
+        ds_name = href.split("/")[-1]
         if not ds_name:
             continue
         
-        for var in ds.get("analysisVariables", []):
-            if var.get("name", "").upper() == adam_variable.upper():
-                return ds_name
-        
-        for var_set in ds.get("analysisVariableSets", []):
-            for var in var_set.get("analysisVariables", []):
-                if var.get("name", "").upper() == adam_variable.upper():
-                    return ds_name
+        # Query individual dataset to get its variables
+        ds_url = f"https://api.library.cdisc.org/api/mdr/adam/adamig-{adamig_version_hyphen}/datastructures/{ds_name}"
+        try:
+            ds_response = api(ds_url, headers_=headers_)
+            ds_data = ds_response.json()
+            
+            # Check analysisVariables
+            if "analysisVariables" in ds_data:
+                for var in ds_data["analysisVariables"]:
+                    if var.get("name", "").upper() == adam_variable.upper():
+                        return ds_name
+            
+            # Check analysisVariableSets
+            if "analysisVariableSets" in ds_data:
+                for var_set in ds_data["analysisVariableSets"]:
+                    if "analysisVariables" in var_set:
+                        for var in var_set["analysisVariables"]:
+                            if var.get("name", "").upper() == adam_variable.upper():
+                                return ds_name
+        except Exception:
+            # If a specific dataset query fails, continue to next one
+            continue
     
     return None
 
@@ -661,7 +689,7 @@ def get_adam_variable_details(
             
             for cl_id, standard, href in unique_codelists:
                 if standard not in fetched_versions:
-                    ct_version = get_latest_ct_version(standard.replace("ct", "").upper())
+                    ct_version = get_latest_ct_version(standard.replace("ct", "").upper(), headers_=headers_)
                     if not ct_version:
                         fetched_versions[standard] = None
                         continue
