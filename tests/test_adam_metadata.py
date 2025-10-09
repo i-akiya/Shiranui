@@ -33,7 +33,7 @@ async def test_get_adam_variable_details_trt01p(mcp_client):
         response = await client.call_tool(
             "get_adam_variable_details",
             arguments={
-                "adam_variable": "TRT01P",
+                "adam_variable": "PPROTFL",
                 "adamig_version": "1-3",
                 "headers_": headers
             }
@@ -44,7 +44,7 @@ async def test_get_adam_variable_details_trt01p(mcp_client):
         assert isinstance(result, TextContent)
         assert "error" not in result_dict, f"Error occurred: {result_dict.get('error')}"
         assert "variable" in result_dict
-        assert result_dict["variable"] == "TRT01P"
+        assert result_dict["variable"] == "PPROTFL"
         assert "dataset" in result_dict
         assert result_dict["dataset"] == "ADSL"
         assert "label" in result_dict
