@@ -1150,3 +1150,812 @@ def get_sdtm_variable_details(variable: str, domain: str = None, sdtmig_version:
             "domain": domain,
             "sdtmig_version": sdtmig_version
         }
+
+
+# ============================================================================
+# CDASH-IG (Clinical Data Acquisition Standards Harmonization) Metadata Tools
+# ============================================================================
+
+@mcp.tool(name="get_cdash_latest_version")
+def get_cdash_latest_version(headers_ = None) -> dict:
+    """
+    Get the latest CDASH-IG version from the CDISC Library API.
+    
+    Args:
+        headers_ (dict, optional): Custom headers for API request.
+        
+    Returns:
+        dict: Contains latest version, all available versions, and display version.
+        
+    Example:
+        get_cdash_latest_version()
+        Returns: {"latest_version": "2-3", "display_version": "CDASHIG v2.3", ...}
+    """
+    try:
+        url = "https://library.cdisc.org/api/mdr/products/DataCollection"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        cdashig_versions = []
+        for link in data.get("_links", {}).get("cdashig", []):
+            version = link.get("href", "").split("/")[-1]
+            if version:
+                cdashig_versions.append(version)
+        
+        if not cdashig_versions:
+            return {"error": "No CDASHIG versions found in API response"}
+        
+        def version_tuple(v):
+            try:
+                parts = v.split("-")
+                return tuple(int(p) for p in parts)
+            except:
+                return (0,)
+        
+        cdashig_versions_sorted = sorted(cdashig_versions, key=version_tuple, reverse=True)
+        latest = cdashig_versions_sorted[0]
+        
+        display_version = f"CDASHIG v{latest.replace('-', '.')}"
+        
+        return {
+            "latest_version": latest,
+            "display_version": display_version,
+            "all_versions": cdashig_versions_sorted,
+            "version_count": len(cdashig_versions_sorted)
+        }
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool(name="get_cdash_domains_list")
+def get_cdash_domains_list(cdashig_version: str = None, headers_ = None) -> dict:
+    """
+    Get list of all CDASH domains for a specific CDASHIG version.
+    
+    Args:
+        cdashig_version (str, optional): CDASHIG version (e.g., "2-3" or "2.3"). 
+                                         If not provided, uses latest version.
+        headers_ (dict, optional): Custom headers for API request.
+        
+    Returns:
+        dict: Contains CDASHIG version and list of all domains with metadata.
+        
+    Example:
+        get_cdash_domains_list("2-3")
+        Returns list of domains like AE, CM, DM, VS, etc.
+    """
+    try:
+        if cdashig_version is None:
+            version_info = get_cdash_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            cdashig_version = version_info["latest_version"]
+        else:
+            cdashig_version = cdashig_version.replace(".", "-")
+        
+        url = f"https://library.cdisc.org/api/mdr/cdashig/{cdashig_version}/domains"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        domains = []
+        for domain_link in data.get("_links", {}).get("domains", []):
+            domain_name = domain_link.get("href", "").split("/")[-1]
+            domains.append({
+                "name": domain_name,
+                "label": domain_link.get("title"),
+                "type": domain_link.get("type")
+            })
+        
+        return {
+            "cdashig_version": cdashig_version,
+            "domain_count": len(domains),
+            "domains": domains
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "cdashig_version": cdashig_version
+        }
+
+
+@mcp.tool(name="get_cdash_domain_structure")
+def get_cdash_domain_structure(domain: str, cdashig_version: str = None, include_codelists: bool = False, headers_ = None) -> dict:
+    """
+    Get complete domain structure with all fields for a CDASH domain.
+    
+    Args:
+        domain (str): CDASH domain code (e.g., "DM", "AE", "VS", "CM").
+        cdashig_version (str, optional): CDASHIG version (e.g., "2-3" or "2.3"). 
+                                         If not provided, uses latest version.
+        include_codelists (bool, optional): If True, retrieves full codelist terms for fields. 
+                                           Default False for faster response.
+        headers_ (dict, optional): Custom headers for API request.
+        
+    Returns:
+        dict: Contains domain metadata and complete list of fields with their attributes.
+        
+    Example:
+        get_cdash_domain_structure("CM", "2-3")
+        Returns concomitant medications domain with all data collection fields
+    """
+    try:
+        domain = domain.upper()
+        
+        if cdashig_version is None:
+            version_info = get_cdash_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            cdashig_version = version_info["latest_version"]
+        else:
+            cdashig_version = cdashig_version.replace(".", "-")
+        
+        url = f"https://library.cdisc.org/api/mdr/cdashig/{cdashig_version}/domains/{domain}"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        fields = []
+        
+        for field_raw in data.get("fields", []):
+            field_data = {
+                "name": field_raw.get("name"),
+                "label": field_raw.get("label"),
+                "datatype": field_raw.get("simpleDatatype"),
+                "core": field_raw.get("core"),
+                "ordinal": field_raw.get("ordinal"),
+                "definition": field_raw.get("definition"),
+                "prompt": field_raw.get("prompt"),
+                "question_text": field_raw.get("questionText"),
+                "implementation_notes": field_raw.get("implementationNotes")
+            }
+            
+            if include_codelists and "_links" in field_raw and "codelist" in field_raw["_links"]:
+                codelist_href = field_raw["_links"]["codelist"]["href"]
+                try:
+                    parts = codelist_href.split("/")
+                    codelist_id = parts[-1]
+                    
+                    if "/packages/" in codelist_href:
+                        package_part = codelist_href.split("/packages/")[1].split("/")[0]
+                        if "-" in package_part:
+                            standard_with_ct = package_part.split("-")[0]
+                            if standard_with_ct.endswith("ct"):
+                                standard = standard_with_ct[:-2].upper()
+                                
+                                ct_version_info = get_latest_ct_version(standard, headers_=headers_)
+                                if "error" not in ct_version_info:
+                                    ct_version = ct_version_info["latest_version"]
+                                    codelist_data = get_cdisc_codelist(
+                                        codelist_id, 
+                                        standard=standard, 
+                                        version=ct_version,
+                                        headers_=headers_
+                                    )
+                                    if "error" not in codelist_data:
+                                        field_data["codelist"] = codelist_data
+                except:
+                    pass
+            
+            fields.append(field_data)
+        
+        fields.sort(key=lambda x: x.get("ordinal", 999) if isinstance(x.get("ordinal"), (int, float)) else 999)
+        
+        return {
+            "domain": domain,
+            "label": data.get("label"),
+            "cdashig_version": cdashig_version,
+            "field_count": len(fields),
+            "fields": fields
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "domain": domain,
+            "cdashig_version": cdashig_version
+        }
+
+
+def find_cdash_field_domain(field: str, cdashig_version: str, headers_ = None):
+    """
+    Helper function to find which CDASH domain contains a specific field.
+    Searches common domains first for efficiency.
+    """
+    common_domains = ["DM", "AE", "VS", "LB", "EX", "CM", "MH", "DS", "EG", "PE", "QS"]
+    
+    field_upper = field.upper()
+    
+    for domain in common_domains:
+        try:
+            url = f"https://library.cdisc.org/api/mdr/cdashig/{cdashig_version}/domains/{domain}"
+            
+            if headers_ is None:
+                response = api(url)
+            else:
+                response = api(url, headers_=headers_)
+            
+            data = response.json()
+            
+            for field_raw in data.get("fields", []):
+                field_name = field_raw.get("name", "")
+                if field_name.upper() == field_upper:
+                    return domain
+                    
+        except:
+            continue
+    
+    return None
+
+
+@mcp.tool(name="get_cdash_field_details")
+def get_cdash_field_details(field: str, domain: str = None, cdashig_version: str = None, include_codelist: bool = True, headers_ = None) -> dict:
+    """
+    Get detailed metadata for a specific CDASH field.
+    
+    Args:
+        field (str): Field name (e.g., "USUBJID", "AESTDTC", "CMTRT").
+        domain (str, optional): CDASH domain code (e.g., "DM", "AE", "CM"). 
+                               If not provided, will search common domains.
+        cdashig_version (str, optional): CDASHIG version (e.g., "2-3" or "2.3"). 
+                                        If not provided, uses latest version.
+        include_codelist (bool, optional): If True, retrieves full codelist terms. Default True.
+        headers_ (dict, optional): Custom headers for API request.
+        
+    Returns:
+        dict: Contains field metadata including name, label, datatype, core, 
+              definition, prompt, and optionally associated codelist terms.
+        
+    Example:
+        get_cdash_field_details("CMTRT", "CM", "2-3")
+        Returns metadata for Concomitant Medication Name field
+    """
+    try:
+        field = field.upper()
+        
+        if cdashig_version is None:
+            version_info = get_cdash_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            cdashig_version = version_info["latest_version"]
+        else:
+            cdashig_version = cdashig_version.replace(".", "-")
+        
+        if domain is None:
+            domain = find_cdash_field_domain(field, cdashig_version, headers_=headers_)
+            if domain is None:
+                return {
+                    "error": f"Field '{field}' not found in common CDASH domains",
+                    "field": field
+                }
+        else:
+            domain = domain.upper()
+        
+        url = f"https://library.cdisc.org/api/mdr/cdashig/{cdashig_version}/domains/{domain}"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        field_data = None
+        for field_raw in data.get("fields", []):
+            if field_raw.get("name", "").upper() == field:
+                field_data = field_raw
+                break
+        
+        if field_data is None:
+            return {
+                "error": f"Field '{field}' not found in domain '{domain}'",
+                "field": field,
+                "domain": domain
+            }
+        
+        details = {
+            "field": field_data.get("name"),
+            "label": field_data.get("label"),
+            "datatype": field_data.get("simpleDatatype"),
+            "core": field_data.get("core"),
+            "ordinal": field_data.get("ordinal"),
+            "definition": field_data.get("definition"),
+            "prompt": field_data.get("prompt"),
+            "question_text": field_data.get("questionText"),
+            "implementation_notes": field_data.get("implementationNotes"),
+            "domain": domain,
+            "cdashig_version": cdashig_version,
+            "codelist": None
+        }
+        
+        if include_codelist and "_links" in field_data and "codelist" in field_data["_links"]:
+            codelist_href = field_data["_links"]["codelist"]["href"]
+            try:
+                parts = codelist_href.split("/")
+                codelist_id = parts[-1]
+                
+                if "/packages/" in codelist_href:
+                    package_part = codelist_href.split("/packages/")[1].split("/")[0]
+                    if "-" in package_part:
+                        standard_with_ct = package_part.split("-")[0]
+                        if standard_with_ct.endswith("ct"):
+                            standard = standard_with_ct[:-2].upper()
+                            
+                            ct_version_info = get_latest_ct_version(standard, headers_=headers_)
+                            if "error" not in ct_version_info:
+                                ct_version = ct_version_info["latest_version"]
+                                codelist_data = get_cdisc_codelist(
+                                    codelist_id, 
+                                    standard=standard, 
+                                    version=ct_version,
+                                    headers_=headers_
+                                )
+                                if "error" not in codelist_data:
+                                    details["codelist"] = codelist_data
+            except:
+                pass
+        
+        return details
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "field": field,
+            "domain": domain,
+            "cdashig_version": cdashig_version
+        }
+
+
+# ============================================================================
+# CDISC LIBRARY SEARCH TOOLS
+# ============================================================================
+
+@mcp.tool(name="search_cdisc_library")
+def search_cdisc_library(
+    query: str,
+    limit: int = 100,
+    headers_=None
+) -> dict:
+    """
+    Search across all CDISC Library content (variables, domains, codelists, BC, etc.)
+    
+    Args:
+        query (str): Search query string
+        limit (int): Maximum number of results to return (default: 100, max: 500)
+        headers_: Optional custom headers
+        
+    Returns:
+        dict: Search results with hits, totalHits, and hasMore
+        
+    Example:
+        search_cdisc_library("blood pressure")
+        search_cdisc_library("USUBJID", limit=50)
+    """
+    try:
+        if limit > 500:
+            limit = 500
+        
+        url = f"https://library.cdisc.org/api/mdr/search?q={query}"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        # Limit results if needed
+        hits = data.get("hits", [])
+        if len(hits) > limit:
+            hits = hits[:limit]
+            data["hits"] = hits
+            data["hasMore"] = True
+        
+        return {
+            "query": query,
+            "totalHits": data.get("totalHits", 0),
+            "hasMore": data.get("hasMore", False),
+            "returnedHits": len(hits),
+            "hits": hits
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "query": query
+        }
+
+
+# ============================================================================
+# SEND (SENDIG) METADATA TOOLS
+# ============================================================================
+
+def find_sendig_variable_domain(variable: str, sendig_version: str = None, headers_=None) -> str:
+    """
+    Helper function to find which SEND domain contains a variable
+    
+    Args:
+        variable (str): Variable name to search for
+        sendig_version (str): SENDIG version (default: latest)
+        headers_: Optional custom headers
+        
+    Returns:
+        str: Domain name if found, None otherwise
+    """
+    if sendig_version is None:
+        version_info = get_sendig_latest_version(headers_=headers_)
+        if "error" in version_info:
+            return None
+        sendig_version = version_info["latest_version"]
+    
+    # Normalize version format
+    sendig_version = sendig_version.replace(".", "-")
+    
+    # Common SEND domains to check
+    common_domains = ["DM", "EX", "LB", "MI", "OM", "PC", "PP", "CL", "MA", "BW", "FW"]
+    
+    for domain in common_domains:
+        try:
+            url = f"https://library.cdisc.org/api/mdr/sendig/{sendig_version}/datasets/{domain}"
+            if headers_ is None:
+                response = api(url)
+            else:
+                response = api(url, headers_=headers_)
+            
+            domain_data = response.json()
+            variables = domain_data.get("datasetVariables", [])
+            
+            for var in variables:
+                if var.get("name") == variable:
+                    return domain
+        except:
+            continue
+    
+    return None
+
+
+@mcp.tool(name="get_sendig_latest_version")
+def get_sendig_latest_version(headers_=None) -> dict:
+    """
+    Get the latest SEND Implementation Guide version from CDISC Library
+    
+    Args:
+        headers_: Optional custom headers
+        
+    Returns:
+        dict: Latest SENDIG version information
+        
+    Example:
+        get_sendig_latest_version()
+    """
+    try:
+        # Start with a known recent version and work backwards to find all
+        url = "https://library.cdisc.org/api/mdr/sendig/3-1-1"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        # Parse version string (e.g., "3.1.1" -> "3-1-1")
+        latest_version = data.get("version", "3.1.1").replace(".", "-")
+        
+        # Collect all versions by following priorVersion links
+        versions = [latest_version]
+        current_data = data
+        
+        while "_links" in current_data and "priorVersion" in current_data["_links"]:
+            try:
+                prior_href = current_data["_links"]["priorVersion"]["href"]
+                full_url = f"https://library.cdisc.org{prior_href}" if prior_href.startswith("/") else prior_href
+                
+                if headers_ is None:
+                    response = api(full_url)
+                else:
+                    response = api(full_url, headers_=headers_)
+                
+                current_data = response.json()
+                version = current_data.get("version", "").replace(".", "-")
+                
+                if version and version not in versions:
+                    versions.append(version)
+                else:
+                    break
+                    
+                if len(versions) >= 20:  # Safety limit
+                    break
+            except:
+                break
+        
+        return {
+            "latest_version": latest_version,
+            "all_versions": versions,
+            "total_versions": len(versions),
+            "display_version": f"SENDIG v{latest_version.replace('-', '.')}"
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "latest_version": "3-1-1"  # Fallback to known stable version
+        }
+
+
+@mcp.tool(name="get_sendig_classes")
+def get_sendig_classes(sendig_version: str = None, headers_=None) -> dict:
+    """
+    Get list of all SEND domain classes (Findings, Events, Interventions, etc.)
+    
+    Args:
+        sendig_version (str): SENDIG version (e.g., "3-1-1" or "3.1.1"). If not specified, uses latest version.
+        headers_: Optional custom headers
+        
+    Returns:
+        dict: Domain classes information
+        
+    Example:
+        get_sendig_classes()
+        get_sendig_classes("3-1-1")
+    """
+    try:
+        if sendig_version is None:
+            version_info = get_sendig_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            sendig_version = version_info["latest_version"]
+        
+        # Normalize version format (3.1.1 -> 3-1-1)
+        sendig_version = sendig_version.replace(".", "-")
+        
+        url = f"https://library.cdisc.org/api/mdr/sendig/{sendig_version}"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        classes = data.get("classes", [])
+        
+        return {
+            "sendig_version": sendig_version,
+            "classes": classes,
+            "class_count": len(classes)
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "sendig_version": sendig_version
+        }
+
+
+@mcp.tool(name="get_sendig_domain_structure")
+def get_sendig_domain_structure(
+    domain: str,
+    sendig_version: str = None,
+    headers_=None
+) -> dict:
+    """
+    Get complete SEND domain structure with all variables and metadata
+    
+    Args:
+        domain (str): SEND domain name (e.g., "DM", "EX", "LB", "MI")
+        sendig_version (str): SENDIG version (e.g., "3-1-1" or "3.1.1"). If not specified, uses latest version.
+        headers_: Optional custom headers
+        
+    Returns:
+        dict: Complete domain structure including variables with metadata
+        
+    Example:
+        get_sendig_domain_structure("DM")
+        get_sendig_domain_structure("LB", "3-1-1")
+    """
+    try:
+        domain = domain.upper()
+        
+        if sendig_version is None:
+            version_info = get_sendig_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            sendig_version = version_info["latest_version"]
+        
+        # Normalize version format
+        sendig_version = sendig_version.replace(".", "-")
+        
+        url = f"https://library.cdisc.org/api/mdr/sendig/{sendig_version}/datasets/{domain}"
+        
+        if headers_ is None:
+            response = api(url)
+        else:
+            response = api(url, headers_=headers_)
+        
+        data = response.json()
+        
+        # Extract class information from _links if available
+        domain_class = None
+        if "_links" in data and "parentClass" in data["_links"]:
+            class_href = data["_links"]["parentClass"]["href"]
+            class_name = class_href.split("/")[-1] if "/" in class_href else None
+            domain_class = class_name
+        
+        variables = data.get("datasetVariables", [])
+        
+        # Structure variables with key metadata
+        structured_vars = []
+        for var in variables:
+            structured_vars.append({
+                "name": var.get("name"),
+                "label": var.get("label"),
+                "datatype": var.get("simpleDatatype"),
+                "core": var.get("core"),
+                "description": var.get("description"),
+                "role": var.get("role"),
+                "ordinal": var.get("ordinal")
+            })
+        
+        return {
+            "domain": domain,
+            "label": data.get("label"),
+            "description": data.get("description"),
+            "domain_class": domain_class,
+            "sendig_version": sendig_version,
+            "variable_count": len(structured_vars),
+            "variables": structured_vars
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "domain": domain,
+            "sendig_version": sendig_version
+        }
+
+
+@mcp.tool(name="get_sendig_variable_details")
+def get_sendig_variable_details(
+    variable: str,
+    domain: str = None,
+    sendig_version: str = None,
+    include_codelist: bool = False,
+    headers_=None
+) -> dict:
+    """
+    Get detailed metadata for a SEND variable with optional codelist integration
+    
+    Args:
+        variable (str): Variable name (e.g., "USUBJID", "LBTESTCD", "MISPEC")
+        domain (str): SEND domain name. If not specified, will attempt to auto-detect.
+        sendig_version (str): SENDIG version (e.g., "3-1-1"). If not specified, uses latest version.
+        include_codelist (bool): If True and variable has controlled terminology, retrieve the codelist
+        headers_: Optional custom headers
+        
+    Returns:
+        dict: Variable details including label, datatype, core status, and optional codelist
+        
+    Example:
+        get_sendig_variable_details("USUBJID")
+        get_sendig_variable_details("LBTESTCD", "LB", include_codelist=True)
+    """
+    try:
+        variable = variable.upper()
+        
+        if sendig_version is None:
+            version_info = get_sendig_latest_version(headers_=headers_)
+            if "error" in version_info:
+                return version_info
+            sendig_version = version_info["latest_version"]
+        
+        # Normalize version format
+        sendig_version = sendig_version.replace(".", "-")
+        
+        # Auto-detect domain if not provided
+        if domain is None:
+            domain = find_sendig_variable_domain(variable, sendig_version, headers_=headers_)
+            if domain is None:
+                return {
+                    "error": f"Could not find variable {variable} in common SEND domains",
+                    "variable": variable
+                }
+        else:
+            domain = domain.upper()
+        
+        # Get domain structure
+        domain_data = get_sendig_domain_structure(domain, sendig_version, headers_=headers_)
+        if "error" in domain_data:
+            return domain_data
+        
+        # Find the variable
+        var_data = None
+        for var in domain_data.get("variables", []):
+            if var.get("name") == variable:
+                var_data = var
+                break
+        
+        if var_data is None:
+            return {
+                "error": f"Variable {variable} not found in domain {domain}",
+                "variable": variable,
+                "domain": domain
+            }
+        
+        details = {
+            "variable": variable,
+            "label": var_data.get("label"),
+            "domain": domain,
+            "datatype": var_data.get("datatype"),
+            "core": var_data.get("core"),
+            "description": var_data.get("description"),
+            "role": var_data.get("role"),
+            "sendig_version": sendig_version
+        }
+        
+        # Add codelist if requested and available
+        if include_codelist:
+            # Get full variable data to check for codelist link
+            url = f"https://library.cdisc.org/api/mdr/sendig/{sendig_version}/datasets/{domain}"
+            if headers_ is None:
+                response = api(url)
+            else:
+                response = api(url, headers_=headers_)
+            
+            full_domain = response.json()
+            for var in full_domain.get("datasetVariables", []):
+                if var.get("name") == variable:
+                    if "_links" in var and "codelist" in var["_links"]:
+                        codelist_href = var["_links"]["codelist"]["href"]
+                        try:
+                            # Extract codelist ID from href
+                            parts = codelist_href.split("/")
+                            codelist_id = parts[-1]
+                            
+                            # Get codelist using CT tool
+                            if "/packages/" in codelist_href:
+                                package_part = codelist_href.split("/packages/")[1].split("/")[0]
+                                if "-" in package_part:
+                                    standard_with_ct = package_part.split("-")[0]
+                                    if standard_with_ct.endswith("ct"):
+                                        standard = standard_with_ct[:-2].upper()
+                                        
+                                        ct_version_info = get_latest_ct_version(standard, headers_=headers_)
+                                        if "error" not in ct_version_info:
+                                            ct_version = ct_version_info["latest_version"]
+                                            codelist_data = get_cdisc_codelist(
+                                                codelist_id,
+                                                standard=standard,
+                                                version=ct_version,
+                                                headers_=headers_
+                                            )
+                                            if "error" not in codelist_data:
+                                                details["codelist"] = codelist_data
+                        except:
+                            pass
+                    break
+        
+        return details
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "variable": variable,
+            "domain": domain,
+            "sendig_version": sendig_version
+        }
