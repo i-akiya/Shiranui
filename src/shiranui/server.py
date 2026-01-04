@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import requests
 from mcp.server.fastmcp import FastMCP
@@ -376,7 +377,7 @@ def get_cdisc_codelist(
     codelist_value: str,
     codelist_type: str = "ID",
     standard: str = "SDTM",
-    version: str = None,
+    version: Optional[str] = None,
     headers_ = None
 ) -> dict:
     """
@@ -491,7 +492,7 @@ def get_cdisc_codelist(
 @mcp.tool(name="get_ct_package_codelists")
 def get_ct_package_codelists(
     standard: str = "SDTM",
-    version: str = None,
+    version: Optional[str] = None,
     headers_ = None
 ) -> dict:
     """
@@ -849,7 +850,7 @@ def get_sdtm_latest_version(headers_ = None) -> dict:
 
 
 @mcp.tool(name="get_sdtm_classes")
-def get_sdtm_classes(sdtmig_version: str = None, headers_ = None) -> dict:
+def get_sdtm_classes(sdtmig_version: Optional[str] = None, headers_ = None) -> dict:
     """
     Get SDTM domain classes (Findings, Events, Interventions, etc.) from CDISC Library.
 
@@ -906,7 +907,7 @@ def get_sdtm_classes(sdtmig_version: str = None, headers_ = None) -> dict:
 
 
 @mcp.tool(name="get_sdtm_domain_structure")
-def get_sdtm_domain_structure(domain: str, sdtmig_version: str = None, include_codelists: bool = False, headers_ = None) -> dict:
+def get_sdtm_domain_structure(domain: str, sdtmig_version: Optional[str] = None, include_codelists: bool = False, headers_ = None) -> dict:
     """
     Get complete domain structure with all variables for an SDTM domain.
 
@@ -1038,7 +1039,11 @@ def find_sdtm_variable_domain(variable: str, sdtmig_version: str, headers_ = Non
 
 
 @mcp.tool(name="get_sdtm_variable_details")
-def get_sdtm_variable_details(variable: str, domain: str = None, sdtmig_version: str = None, include_codelist: bool = True, headers_ = None) -> dict:
+def get_sdtm_variable_details(variable: str,
+                            domain: Optional[str] = None,
+                            sdtmig_version: Optional[str] = None,
+                            include_codelist: bool = True,
+                            headers_ = None) -> dict:
     """
     Get detailed metadata for a specific SDTM variable.
 
@@ -1215,7 +1220,7 @@ def get_cdashig_latest_version(headers_ = None) -> dict:
 
 
 @mcp.tool(name="get_cdashig_domains_list")
-def get_cdashig_domains_list(cdashig_version: str = None, headers_ = None) -> dict:
+def get_cdashig_domains_list(cdashig_version: Optional[str] = None, headers_ = None) -> dict:
     """
     Get list of all CDASH domains for a specific CDASHIG version.
 
@@ -1272,7 +1277,7 @@ def get_cdashig_domains_list(cdashig_version: str = None, headers_ = None) -> di
 
 
 @mcp.tool(name="get_cdashig_domain_structure")
-def get_cdashig_domain_structure(domain: str, cdashig_version: str = None, include_codelists: bool = False, headers_ = None) -> dict:
+def get_cdashig_domain_structure(domain: str, cdashig_version: Optional[str] = None, include_codelists: bool = False, headers_ = None) -> dict:
     """
     Get complete domain structure with all fields for a CDASH domain.
 
@@ -1405,7 +1410,11 @@ def find_cdash_field_domain(field: str, cdashig_version: str, headers_ = None):
 
 
 @mcp.tool(name="get_cdashig_field_details")
-def get_cdashig_field_details(field: str, domain: str = None, cdashig_version: str = None, include_codelist: bool = True, headers_ = None) -> dict:
+def get_cdashig_field_details(field: str,
+                                domain: Optional[str] = None,
+                                cdashig_version: Optional[str] = None,
+                                include_codelist: bool = True,
+                                headers_ = None) -> dict:
     """
     Get detailed metadata for a specific CDASH field.
 
@@ -1586,7 +1595,7 @@ def search_cdisc_library(
 # SEND (SENDIG) METADATA TOOLS
 # ============================================================================
 
-def find_sendig_variable_domain(variable: str, sendig_version: str = None, headers_=None) -> str:
+def find_sendig_variable_domain(variable: str, sendig_version: Optional[str] = None, headers_=None) -> str:
     """
     Helper function to find which SEND domain contains a variable
 
@@ -1700,7 +1709,7 @@ def get_sendig_latest_version(headers_=None) -> dict:
 
 
 @mcp.tool(name="get_sendig_classes")
-def get_sendig_classes(sendig_version: str = None, headers_=None) -> dict:
+def get_sendig_classes(sendig_version: Optional[str] = None, headers_=None) -> dict:
     """
     Get list of all SEND domain classes (Findings, Events, Interventions, etc.)
 
@@ -1752,7 +1761,7 @@ def get_sendig_classes(sendig_version: str = None, headers_=None) -> dict:
 @mcp.tool(name="get_sendig_domain_structure")
 def get_sendig_domain_structure(
     domain: str,
-    sendig_version: str = None,
+    sendig_version: Optional[str] = None,
     headers_=None
 ) -> dict:
     """
@@ -1834,8 +1843,8 @@ def get_sendig_domain_structure(
 @mcp.tool(name="get_sendig_variable_details")
 def get_sendig_variable_details(
     variable: str,
-    domain: str = None,
-    sendig_version: str = None,
+    domain: Optional[str] = None,
+    sendig_version: Optional[str] = None,
     include_codelist: bool = False,
     headers_=None
 ) -> dict:
