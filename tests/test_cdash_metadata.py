@@ -1,6 +1,7 @@
-import pytest
-import os
 import json
+import os
+
+import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from mcp.types import TextContent
@@ -53,7 +54,7 @@ async def test_get_cdashig_domains(mcp_client):
 
     async with client:
         response = await client.call_tool(
-            "get_cdashig_domains",
+            "get_cdashig_domains_list",
             arguments={"headers_": headers}
         )
         result = response[0]
@@ -64,7 +65,7 @@ async def test_get_cdashig_domains(mcp_client):
         assert "domains" in result_dict
         assert result_dict["domain_count"] > 0
         assert isinstance(result_dict["domains"], list)
-        
+
         # Check for DM domain
         assert any(d["name"] == "DM" for d in result_dict["domains"])
 
@@ -77,7 +78,7 @@ async def test_get_cdashig_domains_specific_version(mcp_client):
 
     async with client:
         response = await client.call_tool(
-            "get_cdashig_domains",
+            "get_cdashig_domains_list",
             arguments={"cdashig_version": "2-1", "headers_": headers}
         )
         result = response[0]
@@ -107,7 +108,7 @@ async def test_get_cdashig_domain_structure_cm(mcp_client):
         assert "label" in result_dict
         assert result_dict["field_count"] > 0
         assert "fields" in result_dict
-        
+
         # Check for CMTRT field
         assert any(f["name"] == "CMTRT" for f in result_dict["fields"])
 
@@ -129,7 +130,7 @@ async def test_get_cdashig_domain_structure_dm(mcp_client):
         assert isinstance(result, TextContent)
         assert result_dict["domain"] == "DM"
         assert result_dict["field_count"] > 0
-        
+
         # Check for birth date field (can be BRTHDAT, BRTHDT, or BRTHDTC)
         field_names = [f["name"] for f in result_dict["fields"]]
         assert any(name in ["BRTHDAT", "BRTHDT", "BRTHDTC"] for name in field_names)
@@ -145,7 +146,7 @@ async def test_get_cdashig_field_details(mcp_client):
         response = await client.call_tool(
             "get_cdashig_field_details",
             arguments={
-                "field_name": "CMTRT",
+                "field": "CMTRT",
                 "domain": "CM",
                 "cdashig_version": "2-1",
                 "headers_": headers
@@ -171,7 +172,7 @@ async def test_get_cdashig_field_auto_detect(mcp_client):
         response = await client.call_tool(
             "get_cdashig_field_details",
             arguments={
-                "field_name": "STUDYID",
+                "field": "STUDYID",
                 "cdashig_version": "2-1",
                 "headers_": headers
             }
@@ -193,7 +194,7 @@ async def test_cdashig_version_normalization(mcp_client):
 
     async with client:
         response = await client.call_tool(
-            "get_cdashig_domains",
+            "get_cdashig_domains_list",
             arguments={"cdashig_version": "2.1", "headers_": headers}
         )
         result = response[0]

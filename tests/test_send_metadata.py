@@ -1,6 +1,7 @@
-import pytest
-import os
 import json
+import os
+
+import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from mcp.types import TextContent
@@ -86,7 +87,7 @@ async def test_get_sendig_domain_structure_dm(mcp_client):
         assert "label" in result_dict
         assert result_dict["variable_count"] > 0
         assert "variables" in result_dict
-        
+
         # Check for USUBJID variable
         assert any(v["name"] == "USUBJID" for v in result_dict["variables"])
 
@@ -108,7 +109,7 @@ async def test_get_sendig_domain_structure_lb(mcp_client):
         assert isinstance(result, TextContent)
         assert result_dict["domain"] == "LB"
         assert result_dict["variable_count"] > 0
-        
+
         # Check for LBTESTCD variable
         assert any(v["name"] == "LBTESTCD" for v in result_dict["variables"])
 
@@ -122,7 +123,7 @@ async def test_get_sendig_variable_details(mcp_client):
     async with client:
         response = await client.call_tool(
             "get_sendig_variable_details",
-            arguments={"variable_name": "USUBJID", "domain": "DM", "headers_": headers}
+            arguments={"variable": "USUBJID", "domain": "DM", "headers_": headers}
         )
         result = response[0]
         result_dict = json.loads(result.text)
@@ -143,7 +144,7 @@ async def test_get_sendig_variable_auto_detect(mcp_client):
     async with client:
         response = await client.call_tool(
             "get_sendig_variable_details",
-            arguments={"variable_name": "LBTESTCD", "headers_": headers}
+            arguments={"variable": "LBTESTCD", "headers_": headers}
         )
         result = response[0]
         result_dict = json.loads(result.text)
@@ -189,7 +190,7 @@ async def test_get_sendig_domain_mi(mcp_client):
         assert isinstance(result, TextContent)
         assert result_dict["domain"] == "MI"
         assert result_dict["variable_count"] > 0
-        
+
         # Check for SEND-specific variables
         variable_names = [v["name"] for v in result_dict["variables"]]
         send_vars = ["MISPEC", "MIMETHOD", "MITSTDTL"]
