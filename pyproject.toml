@@ -5,6 +5,7 @@ description = "CDISC Library Retriever: A tool to retrieve the metadata from CDI
 readme = "README.md"
 authors = [
     { name = "Ippei Akiya", email = "ippei.akiya@gmail.com" }
+    { name = "Saikrishnareddy Yengannagari" }
 ]
 requires-python = ">=3.13"
 dependencies = [
