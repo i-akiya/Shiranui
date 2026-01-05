@@ -9,7 +9,10 @@ https://github.com/user-attachments/assets/9cd7e1a6-2750-4910-bb03-763c323b9f22
 - v2 Dataset Specialization Endpoints
 - Controlled Terminology Codelist Endpoints
 - ADaM Variable Metadata Endpoints
-- SDTM Metadata Endpoints (Dataset and Variable Metadata)
+- SDTM Metadata Endpoints
+- CDASH Metadata Endpoints
+- SEND Metadata Endpoints
+- Search Tool
 
 ## Requirements
 - Python v3.13 and [UV](https://docs.astral.sh/uv/getting-started/installation/) were installed on your device.

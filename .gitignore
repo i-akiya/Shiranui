@@ -14,3 +14,12 @@ wheels/
 /sandbox/
 .DS_Store
 .coverage
+
+# Environment variables (contains API keys)
+.env
+
+# MCP setup files (local configuration)
+mcp-servers.json
+*mcp*.ps1
+MCP_*.md
+RESTART_VSCODE.md
