@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/9cd7e1a6-2750-4910-bb03-763c323b9f22
 - Search Tool
 
 ## Requirements
-- Python v3.13 and [UV](https://docs.astral.sh/uv/getting-started/installation/) were installed on your device.
+- [Python v3.13](https://www.python.org/downloads/) and [UV](https://docs.astral.sh/uv/getting-started/installation/) were installed on your device.
 - You have the [CDISC Library API Key](https://api.developer.library.cdisc.org/signin?returnUrl=%2Fapi-details).
   
 ## Installation
@@ -23,19 +23,20 @@ Download Shiranui from the [Releases Page](https://github.com/i-akiya/Shiranui/r
 ### Mac and Linux
 ```bash
 cd /your/shiranui/dir
-uv venv -p 3.13
-source .venv/bin/activate
 uv sync
 ```
 Set your API key as an environment variable named CDISC_LIBRARY_API_KEY.   
 ### Windows
-```
-
+Use back slash "\\" for path separator charactor.
+```powershell
+cd C:\your\shiranui\dir
+uv sync
 ```
 Set your API key as an environment variable named CDISC_LIBRARY_API_KEY.   
   
 ## Configure mcp client
 ### LM Studio
+#### Mac and Linux
 ```
 {
   "mcpServers": {
@@ -44,6 +45,21 @@ Set your API key as an environment variable named CDISC_LIBRARY_API_KEY.
       "args": [
         "run",
         "/full/path/to/shiranui/dir/.venv/bin/shiranui"
+      ]
+    }
+  }
+}
+```
+#### Windows
+Use slash"/" for path separator charactor.
+```
+{
+  "mcpServers": {
+    "Shiranui": {
+      "command": "uv",
+      "args": [
+        "run",
+        "C:/full/path/to/shiranui/dir/.venv/Scripts/shiranui"
       ]
     }
   }
